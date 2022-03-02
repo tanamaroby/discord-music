@@ -4,6 +4,7 @@ const ytdl = require('ytdl-core')
 const botId = '948544074619715585'
 
 const client = new Discord.Client()
+const youtubesearchapi = require('youtube-search-api')
 client.login(process.env.BOT_TOKEN)
 
 client.once('ready', () => {
@@ -56,7 +57,7 @@ client.on('message', async message => {
             stop(message, serverQueue)
             return
         } else if (content.startsWith(`${prefix}help`)) {
-            message.channel.send(`Available GANGSTA commands are: ${prefix}play <video_url>, ${prefix}skip, and ${prefix}stop`)
+            message.channel.send(`Available GANGSTA commands are: ${prefix}play <video_name>/<video_url>, ${prefix}skip, and ${prefix}stop`)
             return
         } else {
             message.channel.send("Please enter a valid command bruddas! Use yo!help to get list of commands wewewewew")
@@ -71,7 +72,7 @@ client.on('message', async message => {
 
 async function execute(message, serverQueue) {
     try {
-        const args = message.content.split(" ")
+        const args = message.content.split(" ", 2)
         const voiceChannel = message.member.voice.channel
         if (!voiceChannel) {
             return message.channel.send(`You need to be in a voice channel to play music!`)
@@ -80,7 +81,27 @@ async function execute(message, serverQueue) {
         if(!permissions.has("CONNECT") || !permissions.has("SPEAK")) {
             return message.channel.send("I need permissions to join and speak in your voice channel!")
         }
-        const songInfo = await ytdl.getInfo(args[1])
+        let songInfo 
+        try {
+            songInfo = await ytdl.getInfo(args[1])
+        } catch (err) {
+            let result = await youtubesearchapi.GetListByKeyword(args[1])
+            let counter = 0
+            while(result.items.length && result.items[counter].type !== 'video') {
+                counter++
+                if (counter >= result.items.length) {
+                    result = await youtubesearchapi.NextPage(result.nextPage)
+                    counter = 0
+                }
+            }
+            if (!result.items.length || result.items[counter].type !== 'video') {
+                console.error('No matching results found yoyoyooyoyoy')
+                message.channel.send('Cannot find yo! Matching HUH!?')
+                return
+            }
+            songInfo = await ytdl.getInfo(`http://www.youtube.com/watch?v=${result.items[counter].id}`)
+        }
+        
         const song = {
             title: songInfo.videoDetails.title,
             url: songInfo.videoDetails.video_url

@@ -11,6 +11,7 @@
     "ffmpeg-static": "^4.4.1",
     "fluent-ffmpeg": "^2.1.2",
     "nodemon": "^2.0.15",
+    "youtube-search-api": "^1.1.0",
     "ytdl-core": "^4.10.1"
   },
   "nodemonConfig": {
