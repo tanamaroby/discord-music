@@ -1,4 +1,8 @@
 {
+  "name": "musik-gangz",
+  "version": "1.00",
+  "description": "Musik for the gangz",
+  "main": "index.js",
   "dependencies": {
     "@discordjs/opus": "^0.5.3",
     "discord.js": "^12.5.3",
@@ -14,6 +18,10 @@
     "watch": "index.js"
   },
   "scripts": {
-    "dev": "nodemon"
+    "dev": "nodemon",
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": "16.x"
   }
 }
