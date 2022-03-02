@@ -1,7 +1,7 @@
 require('dotenv').config()
 const Discord = require('discord.js')
-const help = require('nodemon/lib/help')
 const ytdl = require('ytdl-core')
+const botId = '948544074619715585'
 
 const client = new Discord.Client()
 client.login(process.env.BOT_TOKEN)
@@ -24,6 +24,20 @@ const queue = new Map()
 process.on('uncaughtException', err => {
     console.error(err)
 })
+
+
+client.on('voiceStateUpdate', async (oldState, newState) => {
+    try {
+        if (oldState.member.user.bot) {
+            if (newState.channelID === null) { // bot has left
+                queue.set(oldState.guild.id, null)
+                console.log(`Bot has successfully disconnected from the voice channel`)
+            }
+        }
+    } catch (err) {
+        console.error(err)
+    }
+}) 
 
 let prefix = "yo!"
 client.on('message', async message => {
@@ -155,3 +169,4 @@ function stop(message, serverQueue) {
         message.channel.send("I CAN'T STOP IT NOOOOOOOOOO")
     }
 }
+
