@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "@discordjs/opus": "^0.5.3",
+    "discord.js": "^12.5.3",
+    "dotenv": "^16.0.0",
+    "ffmpeg": "^0.0.4",
+    "ffmpeg-static": "^4.4.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "nodemon": "^2.0.15",
+    "ytdl-core": "^4.10.1"
+  },
+  "nodemonConfig": {
+    "exec": "node index.js",
+    "watch": "index.js"
+  },
+  "scripts": {
+    "dev": "nodemon"
+  }
+}
