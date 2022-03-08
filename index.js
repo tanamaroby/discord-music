@@ -29,7 +29,7 @@ process.on('uncaughtException', err => {
 
 client.on('voiceStateUpdate', async (oldState, newState) => {
     try {
-        if (oldState.member.user.bot) {
+        if (oldState.member.user.id == botId) {
             if (newState.channelID === null) { // bot has left
                 queue.set(oldState.guild.id, null)
                 console.log(`Bot has successfully disconnected from the voice channel`)
@@ -65,7 +65,7 @@ client.on('message', async message => {
         } 
     } catch (err) {
         console.error(err)
-        message.channel.send("I encountered an error when trying to process your message lol")
+        message.channel.send(`I encountered an error when trying to process your message: ${err}`)
         return
     }
 })
@@ -129,12 +129,11 @@ async function execute(message, serverQueue) {
             }
         } else {
             serverQueue.songs.push(song)
-            console.log(serverQueue.songs)
             return message.channel.send(`${song.title} has been added to the queue yo!`)
         }
     } catch (err) {
         console.error(err)
-        message.channel.send(`Yo Yo Yo!! I am unable to play that shiiiizz B, probably some cringe age-restricted shit`)
+        message.channel.send(`I encountered an error: ${err}`)
     }
 }
 
@@ -157,7 +156,7 @@ function play(guild, song) {
         serverQueue.textChannel.send(`Musik Gangz now playing: **${song.title}**`)
     } catch (err) {
         console.error(err)
-        message.channel.send("Having trouble playing this specific song you selected!")
+        message.channel.send(`Having trouble playing this specific song you selected: ${err}`)
     }
 }
 
@@ -172,7 +171,7 @@ function skip(message, serverQueue) {
         serverQueue.connection.dispatcher.end()
     } catch (err) {
         console.error(err)
-        message.channel.send("I can't skip this song for some reason bruh rip")
+        message.channel.send(`I can't skip this song for some reason bruh rip: ${err}`)
     }
 }
 
@@ -188,7 +187,7 @@ function stop(message, serverQueue) {
         serverQueue.connection.dispatcher.end()
     } catch (err) {
         console.error(err)
-        message.channel.send("I CAN'T STOP IT NOOOOOOOOOO")
+        message.channel.send(`I CAN'T STOP IT NOOOOOOOOOO: ${err}`)
     }
 }
 
