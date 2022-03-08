@@ -156,7 +156,6 @@ function play(guild, song) {
         serverQueue.textChannel.send(`Musik Gangz now playing: **${song.title}**`)
     } catch (err) {
         console.error(err)
-        message.channel.send(`Having trouble playing this specific song you selected: ${err}`)
     }
 }
 
