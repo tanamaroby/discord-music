@@ -72,7 +72,7 @@ client.on('message', async message => {
 
 async function execute(message, serverQueue) {
     try {
-        const args = message.content.split(" ", 2)
+        const args = message.content.split(" ")
         const voiceChannel = message.member.voice.channel
         if (!voiceChannel) {
             return message.channel.send(`You need to be in a voice channel to play music!`)
@@ -85,7 +85,9 @@ async function execute(message, serverQueue) {
         try {
             songInfo = await ytdl.getInfo(args[1])
         } catch (err) {
-            let result = await youtubesearchapi.GetListByKeyword(args[1])
+            let search = args.slice(1).join(" ")
+            console.log(search)
+            let result = await youtubesearchapi.GetListByKeyword(search)
             let counter = 0
             while(result.items.length && result.items[counter].type !== 'video') {
                 counter++
