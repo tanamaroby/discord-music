@@ -86,7 +86,6 @@ async function execute(message, serverQueue) {
             songInfo = await ytdl.getInfo(args[1])
         } catch (err) {
             let search = args.slice(1).join(" ")
-            console.log(search)
             let result = await youtubesearchapi.GetListByKeyword(search)
             let counter = 0
             while(result.items.length && result.items[counter].type !== 'video') {
