@@ -12,7 +12,7 @@
     "fluent-ffmpeg": "^2.1.2",
     "nodemon": "^2.0.15",
     "youtube-search-api": "^1.1.0",
-    "ytdl-core": "^4.10.1"
+    "ytdl-core": "^4.11.0"
   },
   "nodemonConfig": {
     "exec": "node index.js",
