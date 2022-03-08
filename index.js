@@ -1,10 +1,14 @@
 require('dotenv').config()
-const Discord = require('discord.js')
-const ytdl = require('ytdl-core')
+const { Intents, Client, Permissions } = require('discord.js')
+const { joinVoiceChannel, NoSubscriberBehavior, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice')
+const playDl = require('play-dl')
+const validUrl = require('valid-url')
 const botId = '948544074619715585'
 
-const client = new Discord.Client()
-const youtubesearchapi = require('youtube-search-api')
+const client = new Client({
+    intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.DIRECT_MESSAGES],
+    partials: ['CHANNEL', 'MESSAGE']
+})
 client.login(process.env.BOT_TOKEN)
 
 client.once('ready', () => {
@@ -26,12 +30,11 @@ process.on('uncaughtException', err => {
     console.error(err)
 })
 
-
 client.on('voiceStateUpdate', async (oldState, newState) => {
     try {
         if (oldState.member.user.id == botId) {
-            if (newState.channelID === null) { // bot has left
-                queue.set(oldState.guild.id, null)
+            if (newState.channel == null) { // bot has left
+                queue.delete(oldState.guild.id)
                 console.log(`Bot has successfully disconnected from the voice channel`)
             }
         }
@@ -41,7 +44,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 }) 
 
 let prefix = "yo!"
-client.on('message', async message => {
+client.on('messageCreate', async message => {
     if (message.author.bot) return
     let content = message.content.toLowerCase()
     if (!content.startsWith(prefix)) return
@@ -72,46 +75,28 @@ client.on('message', async message => {
 
 async function execute(message, serverQueue) {
     try {
+        if (!message.member.voice?.channel) return message.channel.send(`Yo yo yo! You gotta be in a voice channel first yo!`)
         const args = message.content.split(" ")
-        const voiceChannel = message.member.voice.channel
-        if (!voiceChannel) {
-            return message.channel.send(`You need to be in a voice channel to play music!`)
-        }
-        const permissions = voiceChannel.permissionsFor(message.client.user)
-        if(!permissions.has("CONNECT") || !permissions.has("SPEAK")) {
+        const permissions = message.member.permissions
+        if(!permissions.has([Permissions.FLAGS.CONNECT, Permissions.FLAGS.SPEAK])) {
             return message.channel.send("I need permissions to join and speak in your voice channel!")
         }
-        let songInfo 
-        try {
-            songInfo = await ytdl.getInfo(args[1])
-        } catch (err) {
-            let search = args.slice(1).join(" ")
-            let result = await youtubesearchapi.GetListByKeyword(search)
-            let counter = 0
-            while(result.items.length && result.items[counter].type !== 'video') {
-                counter++
-                if (counter >= result.items.length) {
-                    result = await youtubesearchapi.NextPage(result.nextPage)
-                    counter = 0
-                }
-            }
-            if (!result.items.length || result.items[counter].type !== 'video') {
-                console.error('No matching results found yoyoyooyoyoy')
-                message.channel.send('Cannot find yo! Matching HUH!?')
-                return
-            }
-            songInfo = await ytdl.getInfo(`http://www.youtube.com/watch?v=${result.items[counter].id}`)
-        }
         
+        let search = args.slice(1).join(" ")
+        let result = await playDl.search(search, { limit: 1 })
+        if (result.length < 1) {
+            return message.channel.send(`I was unable to find anything yo! Give better search result please!`)
+        }
         const song = {
-            title: songInfo.videoDetails.title,
-            url: songInfo.videoDetails.video_url
+            title: result[0].title,
+            url: result[0].url
         }
         if (!serverQueue) {
             const queueConstruct = {
                 textChannel: message.channel,
-                voiceChannel: voiceChannel,
                 connection: null,
+                subscription: null,
+                player: null,
                 songs: [],
                 volume: 5,
                 playing: true
@@ -119,13 +104,20 @@ async function execute(message, serverQueue) {
             queue.set(message.guild.id, queueConstruct)
             queueConstruct.songs.push(song)
             try {
-                var connection = await voiceChannel.join()
-                queueConstruct.connection = connection
+                queueConstruct.connection = joinVoiceChannel({
+                    channelId: message.member.voice.channel.id,
+                    guildId: message.guild.id,
+                    adapterCreator: message.guild.voiceAdapterCreator
+                })
+                queueConstruct.player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Play }})
+                queueConstruct.player.on(AudioPlayerStatus.Idle, () => {
+                    skip(message, queueConstruct)
+                })
                 play(message.guild, queueConstruct.songs[0])
             } catch (err) {
                 console.log(err)
                 queue.delete(message.guild.id)
-                return message.channel.send("Error trying to play music")
+                return message.channel.send(`Error trying to queue up the song ${song.title}`)
             }
         } else {
             serverQueue.songs.push(song)
@@ -137,22 +129,18 @@ async function execute(message, serverQueue) {
     }
 }
 
-function play(guild, song) {
+async function play(guild, song) {
     try {
         const serverQueue = queue.get(guild.id)
         if (!song) {
-            serverQueue.voiceChannel.leave()
+            serverQueue.connection.destroy()
             queue.delete(guild.id)
             return
         }
-        const dispatcher = serverQueue.connection
-            .play(ytdl(song.url))
-            .on("finish", () => {
-                serverQueue.songs.shift()
-                play(guild, serverQueue.songs[0])
-            })
-            .on("error", error =>  console.error(error))
-        dispatcher.setVolumeLogarithmic(serverQueue.volume / 5)
+        let stream = await playDl.stream(song.url)
+        let resource = createAudioResource(stream.stream, { inputType: stream.type })
+        serverQueue.subscription = serverQueue.connection.subscribe(serverQueue.player) // Sync the discord connection to audio player
+        serverQueue.player.play(resource) // Play the stream
         serverQueue.textChannel.send(`Musik Gangz now playing: **${song.title}**`)
     } catch (err) {
         console.error(err)
@@ -167,7 +155,9 @@ function skip(message, serverQueue) {
         if (!serverQueue) {
             return message.channel.send("Ain't no song in the queue!")
         }
-        serverQueue.connection.dispatcher.end()
+        serverQueue.subscription.unsubscribe()
+        serverQueue.songs.shift()
+        play(message.guild, serverQueue.songs[0])
     } catch (err) {
         console.error(err)
         message.channel.send(`I can't skip this song for some reason bruh rip: ${err}`)
@@ -183,7 +173,8 @@ function stop(message, serverQueue) {
             return message.channel.send("Ain't no song to stop bruvvvvvvv! HUH!? Hello!?")
         }
         serverQueue.songs = []
-        serverQueue.connection.dispatcher.end()
+        serverQueue.connection.destroy()
+        queue.delete(message.guild.id)
     } catch (err) {
         console.error(err)
         message.channel.send(`I CAN'T STOP IT NOOOOOOOOOO: ${err}`)
